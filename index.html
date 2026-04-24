@@ -444,7 +444,8 @@
         <p>Try adjusting your search or filter</p>
       </div>
 
-      <table id="files-table" style="display:none">
+      <div id="table-scroll-wrap" style="overflow-x:auto;display:none">
+      <table id="files-table" style="min-width:1100px">
         <thead>
           <tr>
             <th style="width:32%">File Name</th>
@@ -460,6 +461,7 @@
         </thead>
         <tbody id="files-tbody"></tbody>
       </table>
+      </div>
 
       <div class="pagination" id="pagination" style="display:none">
         <button class="page-btn" id="prev-btn" onclick="changePage(-1)">← Prev</button>
@@ -735,6 +737,7 @@
     if (filteredFiles.length === 0) { showEmpty(); return; }
 
     hideLoading(); hideEmpty();
+    document.getElementById('table-scroll-wrap').style.display = 'block';
     document.getElementById('files-table').style.display = 'table';
 
     tbody.innerHTML = page.map(file => {
@@ -898,7 +901,7 @@
     document.getElementById('empty-state').style.display = 'none';
   }
   function hideLoading() { document.getElementById('loading-state').style.display = 'none'; }
-  function showEmpty()   { document.getElementById('empty-state').style.display = 'block'; document.getElementById('files-table').style.display = 'none'; }
+  function showEmpty()   { document.getElementById('empty-state').style.display = 'block'; document.getElementById('table-scroll-wrap').style.display = 'none'; }
   function hideEmpty()   { document.getElementById('empty-state').style.display = 'none'; }
   function showError(msg){ const b = document.getElementById('error-banner'); b.textContent = '⚠️ ' + msg; b.style.display = 'block'; }
   function hideError()   { document.getElementById('error-banner').style.display = 'none'; }
