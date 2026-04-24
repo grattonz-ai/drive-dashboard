@@ -453,6 +453,7 @@
             <th>Owner</th>
             <th>Visibility</th>
             <th style="width:28%">Shared With</th>
+            <th>Size</th>
             <th>Created</th>
             <th>Last Modified</th>
           </tr>
@@ -466,7 +467,37 @@
         <button class="page-btn" id="next-btn" onclick="changePage(1)">Next →</button>
       </div>
     </div>
+
+    <!-- Bottom toolbar -->
+    <div class="toolbar" style="margin-top:16px;">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="search-input-bottom" placeholder="Search files, emails, names…" oninput="document.getElementById('search-input').value=this.value;filterFiles()">
+      </div>
+      <button class="filter-btn" onclick="setFilter('all')"    >All</button>
+      <button class="filter-btn" onclick="setFilter('shared')" >Shared</button>
+      <button class="filter-btn" onclick="setFilter('public')" >Public</button>
+      <button class="filter-btn" onclick="setFilter('private')">Private</button>
+      <button class="filter-btn" onclick="setFilter('folders')">📁 Folders Only</button>
+      <button class="refresh-btn" onclick="loadFiles()">⟳ Refresh</button>
+    </div>
+
+    <!-- Bottom pagination -->
+    <div class="pagination" id="pagination-bottom" style="display:none;margin-top:8px;">
+      <button class="page-btn" id="prev-btn-bottom" onclick="changePage(-1)">← Prev</button>
+      <span class="page-info" id="page-info-bottom"></span>
+      <button class="page-btn" id="next-btn-bottom" onclick="changePage(1)">Next →</button>
+    </div>
+
   </div>
+</div>
+
+<!-- Scroll buttons -->
+<div style="position:fixed;right:24px;bottom:80px;display:flex;flex-direction:column;gap:8px;z-index:500;">
+  <button onclick="window.scrollTo({top:0,behavior:'smooth'})"
+    style="width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:white;box-shadow:var(--shadow);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;" title="Scroll to top">↑</button>
+  <button onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
+    style="width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:white;box-shadow:var(--shadow);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;" title="Scroll to bottom">↓</button>
 </div>
 
 <script>
@@ -492,21 +523,36 @@
       callback: async (resp) => {
         if (resp.error) { showError("Auth error: " + resp.error); return; }
         accessToken = resp.access_token;
+        sessionStorage.setItem('dd_token', accessToken);
         await loadUserInfo();
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         loadFiles();
       }
     });
+
+    // Restore session on reload
+    const savedToken = sessionStorage.getItem('dd_token');
+    if (savedToken) {
+      accessToken = savedToken;
+      loadUserInfo().then(() => {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        loadFiles();
+      }).catch(() => {
+        sessionStorage.removeItem('dd_token');
+      });
+    }
   };
 
   function signIn() {
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
   }
 
   function signOut() {
     google.accounts.oauth2.revoke(accessToken, () => {
       accessToken = null; allFiles = [];
+      sessionStorage.removeItem('dd_token');
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('login-screen').style.display = 'flex';
     });
@@ -539,7 +585,7 @@
       const MAX = 500;
 
       do {
-        let url = `https://www.googleapis.com/drive/v3/files?pageSize=100&fields=nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webViewLink,shared,ownedByMe,parents)&includeItemsFromAllDrives=false&q=trashed=false`;
+        let url = `https://www.googleapis.com/drive/v3/files?pageSize=100&fields=nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webViewLink,shared,ownedByMe,parents,size,quotaBytesUsed)&includeItemsFromAllDrives=false&q=trashed=false`;
         if (pageToken) url += `&pageToken=${pageToken}`;
 
         const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -749,6 +795,7 @@
         <td>${ownerHtml}</td>
         <td>${badgeHtml}</td>
         <td>${accessHtml}</td>
+        <td class="date-cell">${formatSize(file)}</td>
         <td class="date-cell">${created}</td>
         <td class="date-cell">${modified}</td>
       </tr>`;
@@ -759,15 +806,26 @@
 
   function renderPagination() {
     const totalPages = Math.ceil(filteredFiles.length / PAGE_SIZE);
-    const pag = document.getElementById('pagination');
-    if (totalPages <= 1) { pag.style.display = 'none'; return; }
+    const pag    = document.getElementById('pagination');
+    const pagBot = document.getElementById('pagination-bottom');
+    if (totalPages <= 1) {
+      pag.style.display = 'none';
+      pagBot.style.display = 'none';
+      return;
+    }
     pag.style.display = 'flex';
-    document.getElementById('page-info').innerHTML =
-      `Page <input id="page-input" type="number" min="1" max="${totalPages}" value="${currentPage}"
-        style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;text-align:center;"
-        onchange="jumpToPage(this.value,${totalPages})"> of ${totalPages}`;
+    pagBot.style.display = 'flex';
+
+    const pageHtml = `Page <input type="number" min="1" max="${totalPages}" value="${currentPage}"
+      style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;text-align:center;"
+      onchange="jumpToPage(this.value,${totalPages})"> of ${totalPages}`;
+
+    document.getElementById('page-info').innerHTML = pageHtml;
+    document.getElementById('page-info-bottom').innerHTML = pageHtml;
     document.getElementById('prev-btn').disabled = currentPage === 1;
     document.getElementById('next-btn').disabled = currentPage === totalPages;
+    document.getElementById('prev-btn-bottom').disabled = currentPage === 1;
+    document.getElementById('next-btn-bottom').disabled = currentPage === totalPages;
   }
 
   function jumpToPage(val, total) {
@@ -815,6 +873,15 @@
     return 'File';
   }
 
+  function formatSize(file) {
+    const bytes = parseInt(file.size || file.quotaBytesUsed || 0);
+    if (!bytes) return file.mimeType && file.mimeType.includes('folder') ? '—' : 'Google Doc';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+
   function formatDate(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -827,9 +894,8 @@
 
   function showLoading() {
     document.getElementById('loading-state').style.display = 'block';
-    document.getElementById('files-table').style.display = 'none';
+    // Don't hide table — keep showing existing data while refreshing
     document.getElementById('empty-state').style.display = 'none';
-    document.getElementById('pagination').style.display = 'none';
   }
   function hideLoading() { document.getElementById('loading-state').style.display = 'none'; }
   function showEmpty()   { document.getElementById('empty-state').style.display = 'block'; document.getElementById('files-table').style.display = 'none'; }
