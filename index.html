@@ -543,6 +543,8 @@
         loadFiles();
       }).catch(() => {
         sessionStorage.removeItem('dd_token');
+        accessToken = null;
+        document.getElementById('login-screen').style.display = 'flex';
       });
     }
   };
@@ -564,6 +566,7 @@
     const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
+    if (!res.ok) throw new Error('token invalid');
     const user = await res.json();
     document.getElementById('user-name').textContent = user.name || user.email;
     const av = document.getElementById('user-avatar');
@@ -591,6 +594,14 @@
         if (pageToken) url += `&pageToken=${pageToken}`;
 
         const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (res.status === 401) {
+          sessionStorage.removeItem('dd_token');
+          accessToken = null;
+          btn.disabled = false; btn.innerHTML = '⟳ Refresh';
+          showError("Session expired — re-authenticating…");
+          tokenClient.requestAccessToken({ prompt: '' });
+          return;
+        }
         if (!res.ok) throw new Error(`Drive API error ${res.status}`);
         const data = await res.json();
 
