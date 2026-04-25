@@ -595,17 +595,14 @@
         const data = await res.json();
 
         for (const file of (data.files || [])) {
-          // Try to fetch permissions for all files; gracefully returns [] on 403
           file.permissionDetails = await fetchPermissions(file.id);
           allFiles.push(file);
+          updateStats();
+          applyFilter();
         }
 
         pageToken = data.nextPageToken;
         fetched += (data.files || []).length;
-
-        // Update stats live as files load
-        updateStats();
-        if (allFiles.length > 0) { applyFilter(); }
 
       } while (pageToken && fetched < MAX);
 
