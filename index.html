@@ -586,8 +586,6 @@
 
     try {
       let pageToken = null;
-      let fetched = 0;
-      const MAX = 500;
 
       do {
         let url = `https://www.googleapis.com/drive/v3/files?pageSize=100&fields=nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webViewLink,shared,ownedByMe,parents,size,quotaBytesUsed)&includeItemsFromAllDrives=false&q=trashed=false`;
@@ -613,9 +611,8 @@
         }
 
         pageToken = data.nextPageToken;
-        fetched += (data.files || []).length;
 
-      } while (pageToken && fetched < MAX);
+      } while (pageToken);
 
       // Build folder name map
       await resolveFolderNames();
