@@ -603,9 +603,13 @@
         if (!res.ok) throw new Error(`Drive API error ${res.status}`);
         const data = await res.json();
 
-        for (const file of (data.files || [])) {
-          file.permissionDetails = await fetchPermissions(file.id);
-          allFiles.push(file);
+        const pageFiles = data.files || [];
+        for (let i = 0; i < pageFiles.length; i += 10) {
+          const batch = pageFiles.slice(i, i + 10);
+          await Promise.all(batch.map(async file => {
+            file.permissionDetails = file.ownedByMe ? await fetchPermissions(file.id) : [];
+          }));
+          allFiles.push(...batch);
           updateStats();
           applyFilter();
         }
