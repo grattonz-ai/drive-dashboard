@@ -804,7 +804,7 @@
         for (let i = 0; i < pageFiles.length; i += 10) {
           const batch = pageFiles.slice(i, i + 10);
           await Promise.all(batch.map(async file => {
-            file.permissionDetails = file.ownedByMe ? await fetchPermissions(file.id) : [];
+            file.permissionDetails = await fetchPermissions(file.id);
           }));
           allFiles.push(...batch);
           updateStats();
