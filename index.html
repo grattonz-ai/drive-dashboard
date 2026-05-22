@@ -243,8 +243,8 @@
   table { width: 100%; border-collapse: collapse; }
 
   thead th {
-    padding: 12px 16px; text-align: left;
-    font-size: 11px; font-weight: 600; letter-spacing: .6px;
+    padding: 10px 10px; text-align: left;
+    font-size: 10px; font-weight: 600; letter-spacing: .5px;
     text-transform: uppercase; color: var(--muted);
     background: #fafbfd; border-bottom: 1px solid var(--border);
     white-space: nowrap;
@@ -258,14 +258,14 @@
   tbody tr:hover { background: var(--bg); }
 
   tbody td {
-    padding: 14px 16px; font-size: 13.5px;
+    padding: 10px 10px; font-size: 12.5px;
     vertical-align: middle;
   }
 
   .file-cell { display: flex; align-items: center; gap: 10px; }
   .file-icon { font-size: 20px; flex-shrink: 0; }
 
-  .file-name { font-weight: 500; color: var(--text); }
+  .file-name { font-weight: 500; color: var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .file-name a { color: inherit; text-decoration: none; }
   .file-name a:hover { color: var(--blue); }
 
@@ -363,6 +363,20 @@
   }
   .col-dd-item:hover { background:var(--bg); }
   .col-dd-item.selected { color:var(--blue); background:var(--blue-light); font-weight:500; }
+
+  /* Type filter chips */
+  .type-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .type-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 13px; border-radius:20px;
+    border:1px solid var(--border); background:white;
+    font-family:inherit; font-size:12.5px; font-weight:500;
+    cursor:pointer; color:var(--muted); transition:all .15s;
+    box-shadow:var(--shadow-sm);
+  }
+  .type-chip:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+  .type-chip.active { border-color:var(--blue); background:var(--blue); color:white; box-shadow:0 2px 8px rgba(59,110,248,.25); }
+  .type-chip.active svg { filter:brightness(0) invert(1); }
 
   /* Manage sharing button */
   .manage-share-btn {
@@ -555,6 +569,20 @@
       <button class="refresh-btn" id="refresh-btn" onclick="loadFiles()">⟳ Refresh</button>
     </div>
 
+    <div class="type-chips" id="type-chips">
+      <button class="type-chip active" data-type="all" onclick="setTypeFilter('all')">All</button>
+      <button class="type-chip" data-type="folder" onclick="setTypeFilter('folder')"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M2 6.5C2 5.67 2.67 5 3.5 5H7.8L9.3 6.5H16.5c.83 0 1.5.67 1.5 1.5v7c0 .83-.67 1.5-1.5 1.5h-13C2.67 16 2 15.33 2 14.5V6.5z" fill="#FCC934"/></svg>Folder</button>
+      <button class="type-chip" data-type="doc" onclick="setTypeFilter('doc')"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 2h7l4 4.5V17a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#4285F4"/><path d="M12 2v4.5h4" fill="none" stroke="#6ba7f5" stroke-width="1.2"/><rect x="6.5" y="9" width="7" height="1.2" rx=".6" fill="white" opacity=".9"/><rect x="6.5" y="11.5" width="7" height="1.2" rx=".6" fill="white" opacity=".9"/><rect x="6.5" y="14" width="4.5" height="1.2" rx=".6" fill="white" opacity=".9"/></svg>Doc</button>
+      <button class="type-chip" data-type="sheet" onclick="setTypeFilter('sheet')"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 2h7l4 4.5V17a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#0F9D58"/><path d="M12 2v4.5h4" fill="none" stroke="#52c592" stroke-width="1.2"/><path d="M6.5 9.5h7M6.5 12h7M10 9.5V15" stroke="white" stroke-width="1" opacity=".75"/></svg>Sheet</button>
+      <button class="type-chip" data-type="slides" onclick="setTypeFilter('slides')"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 2h7l4 4.5V17a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#F9AB00"/><path d="M12 2v4.5h4" fill="none" stroke="#fcc84a" stroke-width="1.2"/><rect x="6.5" y="9" width="7" height="5" rx=".75" fill="white" opacity=".45"/></svg>Slides</button>
+      <button class="type-chip" data-type="pdf" onclick="setTypeFilter('pdf')"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 2h7l4 4.5V17a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#EA4335"/><path d="M12 2v4.5h4" fill="none" stroke="#f07a72" stroke-width="1.2"/><text x="10" y="15" text-anchor="middle" fill="white" font-size="5.5" font-weight="700" font-family="sans-serif">PDF</text></svg>PDF</button>
+      <button class="type-chip" data-type="image" onclick="setTypeFilter('image')"><svg width="14" height="14" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="2" fill="#00ACC1"/><circle cx="7" cy="8.5" r="1.5" fill="white" opacity=".8"/><path d="M2 14l4-4 3 3 2.5-3 5.5 5" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" opacity=".8"/></svg>Image</button>
+      <button class="type-chip" data-type="video" onclick="setTypeFilter('video')"><svg width="14" height="14" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="2" fill="#3F51B5"/><path d="M8 7.5l5.5 2.5L8 12.5V7.5z" fill="white" opacity=".9"/></svg>Video</button>
+      <button class="type-chip" data-type="audio" onclick="setTypeFilter('audio')"><svg width="14" height="14" viewBox="0 0 20 20"><rect x="2" y="2" width="16" height="16" rx="3" fill="#FF7043"/><path d="M13 7V12a2 2 0 11-1.5-1.94V8.5L8 9.5V14a2 2 0 11-1.5-1.94V8.5l6.5-1.5z" fill="white" opacity=".85"/></svg>Audio</button>
+      <button class="type-chip" data-type="form" onclick="setTypeFilter('form')"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 2h7l4 4.5V17a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#673AB7"/><path d="M12 2v4.5h4" fill="none" stroke="#9c74d4" stroke-width="1.2"/><rect x="6.5" y="9" width="2" height="1.2" rx=".6" fill="white" opacity=".8"/><rect x="9.5" y="9" width="4" height="1.2" rx=".6" fill="white" opacity=".8"/><rect x="6.5" y="11.5" width="2" height="1.2" rx=".6" fill="white" opacity=".8"/><rect x="9.5" y="11.5" width="4" height="1.2" rx=".6" fill="white" opacity=".8"/></svg>Form</button>
+      <button class="type-chip" data-type="file" onclick="setTypeFilter('file')">Other</button>
+    </div>
+
     <div class="table-wrap">
       <div class="table-header">
         <div class="table-title">Your Files</div>
@@ -573,10 +601,10 @@
       </div>
 
       <div id="table-scroll-wrap" style="overflow-x:auto;display:none">
-      <table id="files-table" style="min-width:1100px">
+      <table id="files-table" style="min-width:900px;table-layout:fixed;width:100%">
         <thead>
           <tr>
-            <th style="width:32%">File Name</th>
+            <th style="width:22%">File Name</th>
             <th style="position:relative">
               <div class="col-header" onclick="toggleDropdown('type',event)">Type <button class="col-arrow" id="arr-type">▾</button></div>
               <div class="col-dropdown" id="dd-type" onclick="event.stopPropagation()">
@@ -611,7 +639,7 @@
                 <div class="col-dd-item" data-val="public" onclick="setColFilter('visibility','public',event)">Anyone with link</div>
               </div>
             </th>
-            <th style="width:28%;position:relative">
+            <th style="width:20%;position:relative">
               <div class="col-header" onclick="toggleDropdown('sharedWith',event)">Shared With <button class="col-arrow" id="arr-sharedWith">▾</button></div>
               <div class="col-dropdown" id="dd-sharedWith" onclick="event.stopPropagation()">
                 <div class="col-dd-item selected" data-val="all" onclick="setColFilter('sharedWith','all',event)">All</div>
@@ -924,6 +952,16 @@
     document.getElementById('dd-' + col).classList.toggle('open');
   }
 
+  function setTypeFilter(val) {
+    colFilters.type = val;
+    document.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === val));
+    document.querySelectorAll('#dd-type .col-dd-item').forEach(item => item.classList.toggle('selected', item.dataset.val === val));
+    const arrow = document.getElementById('arr-type');
+    if (arrow) arrow.classList.toggle('active', val !== 'all');
+    currentPage = 1;
+    applyFilter();
+  }
+
   function setColFilter(col, val, e) {
     e.stopPropagation();
     colFilters[col] = val;
@@ -932,6 +970,9 @@
     });
     const arrow = document.getElementById('arr-' + col);
     if (arrow) arrow.classList.toggle('active', val !== 'all');
+    if (col === 'type') {
+      document.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === val));
+    }
     document.getElementById('dd-' + col).classList.remove('open');
     currentPage = 1;
     applyFilter();
