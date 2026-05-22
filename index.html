@@ -174,6 +174,40 @@
   .stat-card.clickable:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); transform: translateY(-2px); }
   .stat-card.clickable.active { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-light); }
 
+  /* Multi-select */
+  .row-cb { width:16px;height:16px;cursor:pointer;accent-color:var(--blue);flex-shrink:0; }
+  tbody tr.row-selected { background:#eef2ff; }
+  tbody tr.row-selected:hover { background:#e6ebff; }
+
+  /* Bulk action bar */
+  #bulk-bar {
+    position:fixed; bottom:0; left:0; right:0; z-index:998;
+    background:#1e2340; color:white;
+    padding:14px 28px; display:flex; align-items:center; gap:12px;
+    box-shadow:0 -2px 20px rgba(0,0,0,.25);
+    transform:translateY(100%); transition:transform .22s ease;
+  }
+  #bulk-bar.visible { transform:translateY(0); }
+  #bulk-bar .bcount { font-size:14px; font-weight:600; flex:1; }
+  .bulk-btn { padding:8px 18px; border-radius:7px; font-size:13px; font-weight:500; cursor:pointer; border:none; }
+  .bulk-btn.primary { background:var(--blue); color:white; }
+  .bulk-btn.primary:hover { background:#2d5ce8; }
+  .bulk-btn.danger  { background:#dc3545; color:white; }
+  .bulk-btn.danger:hover  { background:#c82333; }
+  .bulk-btn.ghost   { background:transparent; color:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.25); }
+  .bulk-btn.ghost:hover   { background:rgba(255,255,255,.1); }
+
+  /* Bulk modal */
+  #bulk-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:10001;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .bulk-modal { background:white; border-radius:14px; padding:28px; width:460px; max-width:92vw; }
+  .bulk-modal h3 { margin:0 0 18px; font-size:16px; font-weight:600; }
+  .bulk-progress { margin-top:14px; font-size:13px; color:var(--muted); min-height:20px; }
+  .bulk-progress-bar { height:5px; border-radius:3px; background:var(--border); margin-top:8px; overflow:hidden; }
+  .bulk-progress-fill { height:100%; background:var(--blue); border-radius:3px; transition:width .2s; width:0; }
+
   .stat-icon {
     width: 46px; height: 46px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
@@ -354,7 +388,7 @@
   .col-arrow:hover { background:var(--border); color:var(--text); }
   .col-arrow.active { background:var(--blue-light); color:var(--blue); }
   .col-dropdown {
-    position:fixed; z-index:9999;
+    position:absolute; top:100%; left:0; z-index:9999;
     background:white; border:1px solid var(--border);
     border-radius:var(--radius-sm); box-shadow:var(--shadow);
     min-width:160px; padding:4px 0; display:none;
@@ -559,10 +593,7 @@
       </div>
     </div>
 
-    <div style="display:flex;align-items:center;gap:10px;background:#f0f4ff;border:1px solid #d0dcff;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#4a5580;">
-      <span style="font-size:15px">ℹ️</span>
-      <span>You can only manage sharing settings for files <strong>you own</strong>. Files shared to you by others are view-only here.</span>
-    </div>
+
     <div id="error-banner" class="error-banner"></div>
 
     <div class="toolbar">
@@ -604,11 +635,12 @@
         <p>Try adjusting your search or filter</p>
       </div>
 
-      <div id="table-scroll-wrap" style="overflow-x:auto;display:none">
+      <div id="table-scroll-wrap" style="display:none;overflow:visible">
       <table id="files-table" style="min-width:900px;width:100%;table-layout:fixed">
         <thead>
           <tr>
-            <th style="width:16%">File Name</th>
+            <th style="width:3%;text-align:center"><input type="checkbox" class="row-cb" id="select-all-cb" onchange="toggleSelectAll(this.checked)" title="Select all on this page"></th>
+            <th style="width:14%">File Name</th>
             <th style="width:7%;position:relative">
               <div class="col-header" onclick="toggleDropdown('type',event)">Type <button class="col-arrow" id="arr-type">▾</button></div>
               <div class="col-dropdown" id="dd-type" onclick="event.stopPropagation()">
@@ -625,8 +657,8 @@
                 <div class="col-dd-item" data-val="file" onclick="setColFilter('type','file',event)"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 2h7l4 4.5V17a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#9E9E9E"/><path d="M12 2v4.5h4" fill="none" stroke="#bdbdbd" stroke-width="1.2"/></svg>Other</div>
               </div>
             </th>
-            <th style="width:9%">Folder</th>
-            <th style="width:11%;position:relative">
+            <th style="width:8%">Folder</th>
+            <th style="width:10%;position:relative">
               <div class="col-header" onclick="toggleDropdown('owner',event)">Owner <button class="col-arrow" id="arr-owner">▾</button></div>
               <div class="col-dropdown" id="dd-owner" onclick="event.stopPropagation()">
                 <div class="col-dd-item selected" data-val="all" onclick="setColFilter('owner','all',event)">All</div>
@@ -634,7 +666,7 @@
                 <div class="col-dd-item" data-val="theirs" onclick="setColFilter('owner','theirs',event)">Shared to me</div>
               </div>
             </th>
-            <th style="width:11%;position:relative">
+            <th style="width:10%;position:relative">
               <div class="col-header" onclick="toggleDropdown('visibility',event)">Visibility <button class="col-arrow" id="arr-visibility">▾</button></div>
               <div class="col-dropdown" id="dd-visibility" onclick="event.stopPropagation()">
                 <div class="col-dd-item selected" data-val="all" onclick="setColFilter('visibility','all',event)">All</div>
@@ -643,7 +675,7 @@
                 <div class="col-dd-item" data-val="public" onclick="setColFilter('visibility','public',event)">Anyone with link</div>
               </div>
             </th>
-            <th style="width:19%;position:relative">
+            <th style="width:18%;position:relative">
               <div class="col-header" onclick="toggleDropdown('sharedWith',event)">Shared With <button class="col-arrow" id="arr-sharedWith">▾</button></div>
               <div class="col-dropdown" id="dd-sharedWith" onclick="event.stopPropagation()">
                 <div class="col-dd-item selected" data-val="all" onclick="setColFilter('sharedWith','all',event)">All</div>
@@ -706,6 +738,29 @@
     style="width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:white;box-shadow:var(--shadow);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;" title="Scroll to bottom">↓</button>
 </div>
 
+<!-- Bulk action bar -->
+<div id="bulk-bar">
+  <span class="bcount" id="bulk-count">0 files selected</span>
+  <button class="bulk-btn primary" onclick="openBulkShareModal()">+ Share with…</button>
+  <button class="bulk-btn danger"  onclick="openBulkRemoveModal()">Remove access</button>
+  <button class="bulk-btn ghost"   onclick="clearSelection()">✕ Clear</button>
+</div>
+
+<!-- Bulk operation modal -->
+<div id="bulk-overlay" style="display:none" onclick="if(event.target===this)closeBulkModal()">
+  <div class="bulk-modal">
+    <h3 id="bulk-modal-title">Share files</h3>
+    <div id="bulk-modal-body"></div>
+    <div class="bulk-progress"><span id="bulk-progress-text"></span>
+      <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="bulk-progress-fill"></div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+      <button onclick="closeBulkModal()" style="padding:8px 18px;border-radius:7px;border:1px solid var(--border);background:white;cursor:pointer;font-size:13px">Cancel</button>
+      <button id="bulk-confirm-btn" style="padding:8px 18px;border-radius:7px;border:none;background:var(--blue);color:white;cursor:pointer;font-size:13px;font-weight:500">Apply</button>
+    </div>
+  </div>
+</div>
+
 <!-- Share modal -->
 <div id="share-overlay" class="share-overlay" style="display:none" onclick="if(event.target===this)closeShareModal()">
   <div class="share-modal">
@@ -753,6 +808,7 @@
   let accessToken = null;
   let currentUserEmail = null;
   let allFiles = [];
+  let selectedFiles = new Set();
   let filteredFiles = [];
   let colFilters = { type: 'all', owner: 'all', visibility: 'all', sharedWith: 'all' };
   let sortConfig = { col: null, dir: 'asc' };
@@ -951,13 +1007,7 @@
       if (d.id !== 'dd-' + col) d.classList.remove('open');
     });
     const dropdown = document.getElementById('dd-' + col);
-    if (dropdown.classList.contains('open')) { dropdown.classList.remove('open'); return; }
-    const th = e.currentTarget.closest('th') || e.currentTarget;
-    const rect = th.getBoundingClientRect();
-    dropdown.style.top      = (rect.bottom + 2) + 'px';
-    dropdown.style.left     = rect.left + 'px';
-    dropdown.style.minWidth = Math.max(160, rect.width) + 'px';
-    dropdown.classList.add('open');
+    dropdown.classList.toggle('open');
   }
 
   function setTypeFilter(val) {
@@ -1088,7 +1138,7 @@
       hideLoading(); hideEmpty();
       document.getElementById('table-scroll-wrap').style.display = 'block';
       document.getElementById('files-table').style.display = 'table';
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:48px 24px;color:var(--muted);font-size:13px">No files match the current filters</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:48px 24px;color:var(--muted);font-size:13px">No files match the current filters</td></tr>`;
       renderPagination();
       return;
     }
@@ -1161,7 +1211,8 @@
         ? `<div><button class="manage-share-btn" onclick="openShareModal('${file.id}')">⚙ Manage sharing</button></div>`
         : '';
 
-      return `<tr>
+      return `<tr class="${selectedFiles.has(file.id) ? 'row-selected' : ''}">
+        <td style="text-align:center"><input type="checkbox" class="row-cb" ${selectedFiles.has(file.id) ? 'checked' : ''} onchange="toggleFileSelect('${file.id}',this.checked)" onclick="event.stopPropagation()"></td>
         <td><div class="file-cell">${icon}<div class="file-name">${nameHtml}</div></div></td>
         <td><span style="font-size:12px;color:var(--muted)">${type}</span></td>
         <td>${folderHtml}</td>
@@ -1175,6 +1226,7 @@
     }).join('');
 
     renderPagination();
+    updateSelectAll();
   }
 
   function renderPagination() {
@@ -1335,6 +1387,197 @@
     document.getElementById('share-email-input').value = email;
     document.getElementById('email-suggestions').style.display = 'none';
   }
+
+  /* ── Multi-select & bulk actions ── */
+
+  function toggleFileSelect(fileId, checked) {
+    if (checked) selectedFiles.add(fileId);
+    else selectedFiles.delete(fileId);
+    // highlight row
+    const row = document.querySelector(`input.row-cb[onchange*="${fileId}"]`)?.closest('tr');
+    if (row) row.classList.toggle('row-selected', checked);
+    updateSelectAll();
+    updateBulkBar();
+  }
+
+  function toggleSelectAll(checked) {
+    const page = filteredFiles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    page.forEach(f => {
+      if (checked) selectedFiles.add(f.id);
+      else selectedFiles.delete(f.id);
+    });
+    document.querySelectorAll('tbody input.row-cb').forEach(cb => {
+      cb.checked = checked;
+      cb.closest('tr').classList.toggle('row-selected', checked);
+    });
+    updateBulkBar();
+  }
+
+  function updateSelectAll() {
+    const page = filteredFiles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    const cb = document.getElementById('select-all-cb');
+    if (!cb || page.length === 0) return;
+    const allSel  = page.every(f => selectedFiles.has(f.id));
+    const someSel = page.some(f  => selectedFiles.has(f.id));
+    cb.checked = allSel;
+    cb.indeterminate = someSel && !allSel;
+  }
+
+  function updateBulkBar() {
+    const n = selectedFiles.size;
+    const bar = document.getElementById('bulk-bar');
+    bar.classList.toggle('visible', n > 0);
+    document.getElementById('bulk-count').textContent = `${n} file${n !== 1 ? 's' : ''} selected`;
+  }
+
+  function clearSelection() {
+    selectedFiles.clear();
+    document.querySelectorAll('tbody input.row-cb').forEach(cb => {
+      cb.checked = false;
+      cb.closest('tr').classList.remove('row-selected');
+    });
+    const sa = document.getElementById('select-all-cb');
+    if (sa) { sa.checked = false; sa.indeterminate = false; }
+    updateBulkBar();
+  }
+
+  // ── Bulk share modal ──
+
+  let bulkAction = null; // 'share' | 'remove'
+
+  function openBulkShareModal() {
+    bulkAction = 'share';
+    document.getElementById('bulk-modal-title').textContent = `Share ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''} with…`;
+    document.getElementById('bulk-modal-body').innerHTML = `
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <input type="email" id="bulk-email" placeholder="Email address…"
+          style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"
+          oninput="onBulkEmailInput()" autocomplete="off"
+          onblur="setTimeout(()=>{var s=document.getElementById('bulk-email-sug');if(s)s.style.display='none'},150)">
+        <select id="bulk-role" style="padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit">
+          <option value="reader">Viewer</option>
+          <option value="commenter">Commenter</option>
+          <option value="writer" selected>Editor</option>
+        </select>
+      </div>
+      <div id="bulk-email-sug" style="display:none;position:absolute;background:white;border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);z-index:10002;max-height:180px;overflow-y:auto;width:260px"></div>`;
+    document.getElementById('bulk-progress-text').textContent = '';
+    document.getElementById('bulk-progress-fill').style.width = '0';
+    document.getElementById('bulk-confirm-btn').textContent = `Share ${selectedFiles.size} files`;
+    document.getElementById('bulk-confirm-btn').onclick = executeBulkShare;
+    document.getElementById('bulk-overlay').style.display = 'flex';
+  }
+
+  function openBulkRemoveModal() {
+    bulkAction = 'remove';
+    document.getElementById('bulk-modal-title').textContent = `Remove access from ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''}`;
+    document.getElementById('bulk-modal-body').innerHTML = `
+      <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Enter the email of the person whose access you want to remove from all selected files.</p>
+      <input type="email" id="bulk-email" placeholder="Email address…"
+        style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;box-sizing:border-box"
+        oninput="onBulkEmailInput()" autocomplete="off"
+        onblur="setTimeout(()=>{var s=document.getElementById('bulk-email-sug');if(s)s.style.display='none'},150)">
+      <div id="bulk-email-sug" style="display:none;position:absolute;background:white;border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);z-index:10002;max-height:180px;overflow-y:auto;width:300px"></div>`;
+    document.getElementById('bulk-progress-text').textContent = '';
+    document.getElementById('bulk-progress-fill').style.width = '0';
+    document.getElementById('bulk-confirm-btn').textContent = `Remove from ${selectedFiles.size} files`;
+    document.getElementById('bulk-confirm-btn').style.background = '#dc3545';
+    document.getElementById('bulk-confirm-btn').onclick = executeBulkRemove;
+    document.getElementById('bulk-overlay').style.display = 'flex';
+  }
+
+  function closeBulkModal() {
+    document.getElementById('bulk-overlay').style.display = 'none';
+    document.getElementById('bulk-confirm-btn').style.background = 'var(--blue)';
+    bulkAction = null;
+  }
+
+  function onBulkEmailInput() {
+    const q = (document.getElementById('bulk-email')?.value || '').toLowerCase().trim();
+    const sug = document.getElementById('bulk-email-sug');
+    if (!sug) return;
+    if (!q) { sug.style.display = 'none'; return; }
+    const matches = knownPeople.filter(p =>
+      p.email.toLowerCase().includes(q) || (p.name && p.name.toLowerCase().includes(q))
+    ).slice(0, 6);
+    if (!matches.length) { sug.style.display = 'none'; return; }
+    sug.innerHTML = matches.map(p =>
+      `<div style="padding:8px 12px;cursor:pointer;font-size:13px" onmousedown="document.getElementById('bulk-email').value='${escHtml(p.email)}';document.getElementById('bulk-email-sug').style.display='none'">
+        <div style="font-weight:500">${escHtml(p.name || p.email)}</div>
+        ${p.name ? `<div style="font-size:11px;color:var(--muted)">${escHtml(p.email)}</div>` : ''}
+      </div>`
+    ).join('');
+    sug.style.display = 'block';
+  }
+
+  async function executeBulkShare() {
+    const email = document.getElementById('bulk-email')?.value.trim();
+    const role  = document.getElementById('bulk-role')?.value || 'reader';
+    if (!email) { alert('Please enter an email address.'); return; }
+    const ids = [...selectedFiles];
+    const btn = document.getElementById('bulk-confirm-btn');
+    btn.disabled = true;
+    let done = 0, failed = 0;
+    const fill = document.getElementById('bulk-progress-fill');
+    const txt  = document.getElementById('bulk-progress-text');
+    for (const fileId of ids) {
+      try {
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=true`,
+          { method:'POST', headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+            body: JSON.stringify({ type:'user', role, emailAddress:email }) }
+        );
+        if (res.ok) {
+          done++;
+          // refresh cached permissions
+          const f = allFiles.find(x => x.id === fileId);
+          if (f) f.permissionDetails = await fetchPermissions(fileId);
+        } else { failed++; }
+      } catch { failed++; }
+      const pct = Math.round((done + failed) / ids.length * 100);
+      fill.style.width = pct + '%';
+      txt.textContent = `${done + failed} / ${ids.length} processed…`;
+    }
+    txt.textContent = `Done — ${done} shared${failed ? `, ${failed} failed` : ''}.`;
+    btn.disabled = false;
+    updateStats(); applyFilter();
+  }
+
+  async function executeBulkRemove() {
+    const email = document.getElementById('bulk-email')?.value.trim().toLowerCase();
+    if (!email) { alert('Please enter an email address.'); return; }
+    const ids = [...selectedFiles];
+    const btn = document.getElementById('bulk-confirm-btn');
+    btn.disabled = true;
+    let done = 0, failed = 0, notFound = 0;
+    const fill = document.getElementById('bulk-progress-fill');
+    const txt  = document.getElementById('bulk-progress-text');
+    for (const fileId of ids) {
+      const file = allFiles.find(x => x.id === fileId);
+      const perm = (file?.permissionDetails || []).find(p =>
+        p.emailAddress && p.emailAddress.toLowerCase() === email
+      );
+      if (!perm) { notFound++; fill.style.width = Math.round((done + failed + notFound) / ids.length * 100) + '%'; txt.textContent = `${done + failed + notFound} / ${ids.length} processed…`; continue; }
+      try {
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${perm.id}`,
+          { method:'DELETE', headers:{ Authorization:`Bearer ${accessToken}` } }
+        );
+        if (res.ok || res.status === 204) {
+          done++;
+          if (file) file.permissionDetails = await fetchPermissions(fileId);
+        } else { failed++; }
+      } catch { failed++; }
+      const pct = Math.round((done + failed + notFound) / ids.length * 100);
+      fill.style.width = pct + '%';
+      txt.textContent = `${done + failed + notFound} / ${ids.length} processed…`;
+    }
+    txt.textContent = `Done — removed from ${done} file${done !== 1 ? 's' : ''}${notFound ? `, not found on ${notFound}` : ''}${failed ? `, ${failed} failed` : ''}.`;
+    btn.disabled = false;
+    updateStats(); applyFilter();
+  }
+
+  /* ── end multi-select ── */
 
   function openShareModal(fileId) {
     activeShareFileId = fileId;
