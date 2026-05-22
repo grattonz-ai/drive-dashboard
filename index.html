@@ -838,8 +838,7 @@
         if (res.status === 401) {
           sessionStorage.removeItem('dd_token');
           accessToken = null;
-          btn.disabled = false; btn.innerHTML = '⟳ Refresh';
-          showError("Session expired — re-authenticating…");
+          btn.disabled = false; btn.innerHTML = '⟳ Refresh';  showError("Session expired — re-authenticating…");
           tokenClient.requestAccessToken({ prompt: '' });
           return;
         }
@@ -871,7 +870,8 @@
       showEmpty();
     } finally {
       btn.disabled = false;
-      btn.innerHTML = '⟳ Refresh';
+      btn.innerHTML = `✓ ${allFiles.length} files loaded`;
+      setTimeout(() => { btn.innerHTML = '⟳ Refresh'; }, 2500);
     }
   }
 
