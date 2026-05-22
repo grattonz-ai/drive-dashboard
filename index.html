@@ -989,15 +989,28 @@
     const segments = [];
     let cur = folderId;
     const seen = new Set();
+    let reachedRoot = false;
+
     while (cur && !seen.has(cur) && segments.length < 10) {
       seen.add(cur);
       const info = folderInfoCache[cur];
-      if (!info) break;
+      if (!info) break;                       // unknown node — stop
       segments.unshift({ id: cur, name: info.name });
+      if (!info.parentId) { reachedRoot = true; break; }  // this node IS the root
       cur = info.parentId;
     }
-    segments.unshift({ id: null, name: 'My Drive' });
-    // Collapse long paths: My Drive > … > parent > leaf
+
+    if (segments.length === 0) {
+      // nothing resolved — link to folder with generic label
+      return [{ id: folderId, name: 'My Drive' }];
+    }
+
+    // Only prepend a synthetic "My Drive" if we never reached the actual root
+    if (!reachedRoot) {
+      segments.unshift({ id: null, name: 'My Drive' });
+    }
+
+    // Collapse deep paths: first › … › second-to-last › last
     if (segments.length > 4) {
       return [segments[0], { id: null, name: '…' }, segments[segments.length - 2], segments[segments.length - 1]];
     }
