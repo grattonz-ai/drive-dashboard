@@ -912,6 +912,7 @@
           }));
           allFiles.push(...batch);
           btn.textContent = `⟳ Loading… ${allFiles.length} files`;
+          await resolveFolderNames();
           updateStats();
           applyFilter();
         }
