@@ -947,29 +947,61 @@
   }
 
   // ── Folder name resolution ──
-  const folderNameCache = {};
+  // {id: {name, parentId|null}}  — null parentId means root
+  const folderInfoCache = {};
+
+  async function fetchFolderInfo(id) {
+    if (folderInfoCache[id]) return;
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,parents`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        folderInfoCache[id] = { name: data.name || 'Unknown', parentId: (data.parents || [])[0] || null };
+      } else {
+        folderInfoCache[id] = { name: 'My Drive', parentId: null };
+      }
+    } catch { folderInfoCache[id] = { name: 'My Drive', parentId: null }; }
+  }
 
   async function resolveFolderNames() {
-    // Collect all unique parent IDs
-    const parentIds = new Set();
-    allFiles.forEach(f => (f.parents || []).forEach(id => parentIds.add(id)));
-    
-    // Fetch names for each parent we don't already know
-    for (const id of parentIds) {
-      if (folderNameCache[id]) continue;
-      try {
-        const res = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${id}?fields=id,name`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          folderNameCache[id] = data.name || 'Unknown';
-        } else {
-          folderNameCache[id] = 'My Drive';
-        }
-      } catch { folderNameCache[id] = 'My Drive'; }
+    // Seed queue with direct parents of all files
+    const queue = new Set();
+    allFiles.forEach(f => (f.parents || []).forEach(id => { if (!folderInfoCache[id]) queue.add(id); }));
+
+    // BFS up the folder tree — fetch in batches of 10, enqueue each parent we haven't seen
+    let batch = [...queue];
+    while (batch.length > 0) {
+      await Promise.all(batch.map(id => fetchFolderInfo(id)));
+      const next = [];
+      batch.forEach(id => {
+        const p = folderInfoCache[id]?.parentId;
+        if (p && !folderInfoCache[p]) next.push(p);
+      });
+      batch = next;
     }
+  }
+
+  function getFolderPath(folderId) {
+    if (!folderId) return [{ id: null, name: 'My Drive' }];
+    const segments = [];
+    let cur = folderId;
+    const seen = new Set();
+    while (cur && !seen.has(cur) && segments.length < 10) {
+      seen.add(cur);
+      const info = folderInfoCache[cur];
+      if (!info) break;
+      segments.unshift({ id: cur, name: info.name });
+      cur = info.parentId;
+    }
+    segments.unshift({ id: null, name: 'My Drive' });
+    // Collapse long paths: My Drive > … > parent > leaf
+    if (segments.length > 4) {
+      return [segments[0], { id: null, name: '…' }, segments[segments.length - 2], segments[segments.length - 1]];
+    }
+    return segments;
   }
 
   // ── Permission management ──
@@ -1201,9 +1233,19 @@
         : `<span style="font-size:12px;color:var(--muted)">Unknown</span>`;
 
       const parentId = (file.parents || [])[0];
-      const folderName = parentId ? (folderNameCache[parentId] || 'My Drive') : 'My Drive';
-      const folderUrl = parentId ? `https://drive.google.com/drive/folders/${parentId}` : 'https://drive.google.com/drive/my-drive';
-      const folderHtml = `<a href="${folderUrl}" target="_blank" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--muted)'">📁 ${escHtml(folderName)}</a>`;
+      const path = getFolderPath(parentId);
+      const folderHtml = `<div style="font-size:11px;line-height:1.6;display:flex;flex-wrap:wrap;align-items:center;gap:1px">${
+        path.map((seg, i) => {
+          const isLast = i === path.length - 1;
+          const isDots = seg.name === '…';
+          if (isDots) return `<span style="color:var(--muted);padding:0 1px">…</span>`;
+          const url = seg.id ? `https://drive.google.com/drive/folders/${seg.id}` : 'https://drive.google.com/drive/my-drive';
+          const part = isLast
+            ? `<a href="${url}" target="_blank" style="color:var(--blue);font-weight:500;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escHtml(seg.name)}</a>`
+            : `<span style="color:var(--muted)">${escHtml(seg.name)}</span>`;
+          return part + (isLast ? '' : `<span style="color:var(--muted);padding:0 2px">›</span>`);
+        }).join('')
+      }</div>`;
       const userPerm = (file.permissionDetails || []).find(p =>
         p.emailAddress && currentUserEmail &&
         p.emailAddress.toLowerCase() === currentUserEmail.toLowerCase()
