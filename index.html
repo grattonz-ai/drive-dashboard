@@ -170,6 +170,9 @@
   .stat-card:nth-child(2) { animation-delay: .1s; }
   .stat-card:nth-child(3) { animation-delay: .15s; }
   .stat-card:nth-child(4) { animation-delay: .2s; }
+  .stat-card.clickable { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+  .stat-card.clickable:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); transform: translateY(-2px); }
+  .stat-card.clickable.active { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-light); }
 
   .stat-icon {
     width: 46px; height: 46px; border-radius: 12px;
@@ -533,14 +536,14 @@
           <div class="stat-lbl">Total Files</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" id="stat-card-private" onclick="filterByStatCard('private')" title="Click to filter private files">
         <div class="stat-icon green">🔒</div>
         <div>
           <div class="stat-val" id="stat-private">—</div>
           <div class="stat-lbl">Private Files</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" id="stat-card-public" onclick="filterByStatCard('public')" title="Click to filter publicly shared files">
         <div class="stat-icon orange">🌐</div>
         <div>
           <div class="stat-val" id="stat-public">—</div>
@@ -691,12 +694,6 @@
       <button class="refresh-btn" onclick="loadFiles()">⟳ Refresh</button>
     </div>
 
-    <!-- Bottom pagination -->
-    <div class="pagination" id="pagination-bottom" style="display:none;margin-top:8px;">
-      <button class="page-btn" id="prev-btn-bottom" onclick="changePage(-1)">← Prev</button>
-      <span class="page-info" id="page-info-bottom"></span>
-      <button class="page-btn" id="next-btn-bottom" onclick="changePage(1)">Next →</button>
-    </div>
 
   </div>
 </div>
@@ -754,6 +751,7 @@
 
   let tokenClient;
   let accessToken = null;
+  let currentUserEmail = null;
   let allFiles = [];
   let filteredFiles = [];
   let colFilters = { type: 'all', owner: 'all', visibility: 'all', sharedWith: 'all' };
@@ -812,6 +810,7 @@
     });
     if (!res.ok) throw new Error('token invalid');
     const user = await res.json();
+    currentUserEmail = user.email || null;
     document.getElementById('user-name').textContent = user.name || user.email;
     const av = document.getElementById('user-avatar');
     if (user.picture) {
@@ -854,6 +853,7 @@
             file.permissionDetails = await fetchPermissions(file.id);
           }));
           allFiles.push(...batch);
+          btn.textContent = `⟳ Loading… ${allFiles.length} files`;
           updateStats();
           applyFilter();
         }
@@ -968,6 +968,22 @@
     applyFilter();
   }
 
+  function filterByStatCard(visibility) {
+    const newVal = colFilters.visibility === visibility ? 'all' : visibility;
+    colFilters.visibility = newVal;
+    document.querySelectorAll('#dd-visibility .col-dd-item').forEach(item => {
+      item.classList.toggle('selected', item.dataset.val === newVal);
+    });
+    const arrow = document.getElementById('arr-visibility');
+    if (arrow) arrow.classList.toggle('active', newVal !== 'all');
+    ['private', 'public'].forEach(v => {
+      const card = document.getElementById('stat-card-' + v);
+      if (card) card.classList.toggle('active', newVal === v);
+    });
+    currentPage = 1;
+    applyFilter();
+  }
+
   function setColFilter(col, val, e) {
     e.stopPropagation();
     colFilters[col] = val;
@@ -978,6 +994,12 @@
     if (arrow) arrow.classList.toggle('active', val !== 'all');
     if (col === 'type') {
       document.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === val));
+    }
+    if (col === 'visibility') {
+      ['private', 'public'].forEach(v => {
+        const card = document.getElementById('stat-card-' + v);
+        if (card) card.classList.toggle('active', val === v);
+      });
     }
     document.getElementById('dd-' + col).classList.remove('open');
     currentPage = 1;
@@ -1125,8 +1147,15 @@
 
       const parentId = (file.parents || [])[0];
       const folderName = parentId ? (folderNameCache[parentId] || 'My Drive') : 'My Drive';
-      const folderHtml = `<span style="font-size:12px;color:var(--muted)">📁 ${escHtml(folderName)}</span>`;
-      const manageBtnHtml = file.ownedByMe !== false
+      const folderUrl = parentId ? `https://drive.google.com/drive/folders/${parentId}` : 'https://drive.google.com/drive/my-drive';
+      const folderHtml = `<a href="${folderUrl}" target="_blank" style="font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--muted)'">📁 ${escHtml(folderName)}</a>`;
+      const userPerm = (file.permissionDetails || []).find(p =>
+        p.emailAddress && currentUserEmail &&
+        p.emailAddress.toLowerCase() === currentUserEmail.toLowerCase()
+      );
+      const canManage = file.ownedByMe !== false ||
+        (userPerm && (userPerm.role === 'writer' || userPerm.role === 'fileOrganizer'));
+      const manageBtnHtml = canManage
         ? `<div><button class="manage-share-btn" onclick="openShareModal('${file.id}')">⚙ Manage sharing</button></div>`
         : '';
 
@@ -1148,26 +1177,17 @@
 
   function renderPagination() {
     const totalPages = Math.ceil(filteredFiles.length / PAGE_SIZE);
-    const pag    = document.getElementById('pagination');
-    const pagBot = document.getElementById('pagination-bottom');
-    if (totalPages <= 1) {
-      pag.style.display = 'none';
-      pagBot.style.display = 'none';
-      return;
-    }
+    const pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.style.display = 'none'; return; }
     pag.style.display = 'flex';
-    pagBot.style.display = 'flex';
 
     const pageHtml = `Page <input type="number" min="1" max="${totalPages}" value="${currentPage}"
       style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;text-align:center;"
       onchange="jumpToPage(this.value,${totalPages})"> of ${totalPages}`;
 
     document.getElementById('page-info').innerHTML = pageHtml;
-    document.getElementById('page-info-bottom').innerHTML = pageHtml;
     document.getElementById('prev-btn').disabled = currentPage === 1;
     document.getElementById('next-btn').disabled = currentPage === totalPages;
-    document.getElementById('prev-btn-bottom').disabled = currentPage === 1;
-    document.getElementById('next-btn-bottom').disabled = currentPage === totalPages;
   }
 
   function jumpToPage(val, total) {
