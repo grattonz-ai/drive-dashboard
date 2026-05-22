@@ -364,6 +364,98 @@
   .col-dd-item:hover { background:var(--bg); }
   .col-dd-item.selected { color:var(--blue); background:var(--blue-light); font-weight:500; }
 
+  /* Manage sharing button */
+  .manage-share-btn {
+    margin-top:8px; padding:4px 10px; border-radius:6px;
+    border:1px solid var(--border); background:white;
+    font-size:11.5px; font-family:inherit; cursor:pointer;
+    color:var(--muted); transition:all .15s; display:inline-block;
+  }
+  .manage-share-btn:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+
+  /* Share modal */
+  .share-overlay {
+    position:fixed; inset:0; z-index:1000;
+    background:rgba(0,0,0,.45); display:flex;
+    align-items:center; justify-content:center; padding:24px;
+  }
+  .share-modal {
+    background:white; border-radius:var(--radius);
+    box-shadow:var(--shadow-lg); width:100%; max-width:520px;
+    max-height:82vh; display:flex; flex-direction:column;
+    animation:fadeUp .2s ease;
+  }
+  .share-modal-header {
+    padding:18px 22px; border-bottom:1px solid var(--border);
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  }
+  .share-modal-title { font-weight:600; font-size:14.5px; word-break:break-all; }
+  .share-modal-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  .share-modal-close {
+    width:28px; height:28px; border-radius:6px; border:none; background:transparent;
+    cursor:pointer; font-size:15px; color:var(--muted); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; transition:all .15s;
+  }
+  .share-modal-close:hover { background:var(--bg); color:var(--text); }
+  .share-modal-body { padding:18px 22px; overflow-y:auto; flex:1; }
+  .share-add-row { display:flex; gap:8px; margin-bottom:20px; }
+  .share-email-input {
+    flex:1; padding:9px 12px; border:1px solid var(--border);
+    border-radius:var(--radius-sm); font-family:inherit; font-size:13.5px;
+    outline:none; transition:border-color .15s; min-width:0;
+  }
+  .share-email-input:focus { border-color:var(--blue); }
+  .share-role-select {
+    padding:9px 8px; border:1px solid var(--border);
+    border-radius:var(--radius-sm); font-family:inherit; font-size:13px;
+    background:white; cursor:pointer; outline:none;
+  }
+  .share-add-btn {
+    padding:9px 16px; border-radius:var(--radius-sm); border:none;
+    background:var(--blue); color:white; font-family:inherit; font-size:13px;
+    font-weight:500; cursor:pointer; white-space:nowrap; transition:all .15s;
+  }
+  .share-add-btn:hover { background:#2d5ce8; }
+  .share-add-btn:disabled { opacity:.6; cursor:not-allowed; }
+  .share-section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:10px; }
+  .share-perm-row {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0; border-bottom:1px solid var(--border);
+    transition:opacity .2s;
+  }
+  .share-perm-row:last-child { border-bottom:none; }
+  .share-perm-avatar {
+    width:32px; height:32px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:600; color:white;
+    background:linear-gradient(135deg, var(--blue), var(--purple));
+  }
+  .share-perm-info { flex:1; min-width:0; }
+  .share-perm-name { font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .share-perm-email { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .share-perm-role-select {
+    padding:5px 7px; border:1px solid var(--border);
+    border-radius:6px; font-family:inherit; font-size:12px;
+    background:white; cursor:pointer; outline:none; flex-shrink:0;
+  }
+  .share-perm-role-label { font-size:12px; color:var(--muted); flex-shrink:0; }
+  .share-perm-remove {
+    width:26px; height:26px; border-radius:5px; border:none; background:transparent;
+    cursor:pointer; color:var(--muted); display:flex; align-items:center; justify-content:center;
+    font-size:13px; transition:all .15s; flex-shrink:0;
+  }
+  .share-perm-remove:hover { background:var(--red-light); color:var(--red); }
+  .share-modal-footer {
+    padding:14px 22px; border-top:1px solid var(--border);
+    display:flex; justify-content:flex-end;
+  }
+  .share-done-btn {
+    padding:9px 22px; border-radius:var(--radius-sm); border:none;
+    background:var(--blue); color:white; font-family:inherit; font-size:13px;
+    font-weight:500; cursor:pointer; transition:all .15s;
+  }
+  .share-done-btn:hover { background:#2d5ce8; }
+
   @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -574,6 +666,36 @@
     style="width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:white;box-shadow:var(--shadow);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;" title="Scroll to top">↑</button>
   <button onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
     style="width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:white;box-shadow:var(--shadow);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;" title="Scroll to bottom">↓</button>
+</div>
+
+<!-- Share modal -->
+<div id="share-overlay" class="share-overlay" style="display:none" onclick="if(event.target===this)closeShareModal()">
+  <div class="share-modal">
+    <div class="share-modal-header">
+      <div style="min-width:0">
+        <div class="share-modal-title" id="share-modal-filename"></div>
+        <div class="share-modal-sub">Manage sharing</div>
+      </div>
+      <button class="share-modal-close" onclick="closeShareModal()">✕</button>
+    </div>
+    <div class="share-modal-body">
+      <div class="share-section-label">Add people</div>
+      <div class="share-add-row">
+        <input type="email" class="share-email-input" id="share-email-input" placeholder="Email address…">
+        <select class="share-role-select" id="share-role-select">
+          <option value="reader">Viewer</option>
+          <option value="commenter">Commenter</option>
+          <option value="writer" selected>Editor</option>
+        </select>
+        <button class="share-add-btn" onclick="handleAddPerson()">Add</button>
+      </div>
+      <div class="share-section-label">People with access</div>
+      <div id="share-perms-list"></div>
+    </div>
+    <div class="share-modal-footer">
+      <button class="share-done-btn" onclick="closeShareModal()">Done</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -928,6 +1050,9 @@
       const parentId = (file.parents || [])[0];
       const folderName = parentId ? (folderNameCache[parentId] || 'My Drive') : 'My Drive';
       const folderHtml = `<span style="font-size:12px;color:var(--muted)">📁 ${escHtml(folderName)}</span>`;
+      const manageBtnHtml = file.ownedByMe
+        ? `<div><button class="manage-share-btn" onclick="openShareModal('${file.id}')">⚙ Manage sharing</button></div>`
+        : '';
 
       return `<tr>
         <td><div class="file-cell">${icon}<div class="file-name">${nameHtml}</div></div></td>
@@ -935,7 +1060,7 @@
         <td>${folderHtml}</td>
         <td>${ownerHtml}</td>
         <td>${badgeHtml}</td>
-        <td>${accessHtml}</td>
+        <td>${accessHtml}${manageBtnHtml}</td>
         <td class="date-cell">${formatSize(file)}</td>
         <td class="date-cell">${created}</td>
         <td class="date-cell">${modified}</td>
@@ -1073,6 +1198,121 @@
   function hideEmpty()   { document.getElementById('empty-state').style.display = 'none'; }
   function showError(msg){ const b = document.getElementById('error-banner'); b.textContent = '⚠️ ' + msg; b.style.display = 'block'; }
   function hideError()   { document.getElementById('error-banner').style.display = 'none'; }
+
+  // ── Share modal ──
+  let activeShareFileId = null;
+
+  function openShareModal(fileId) {
+    activeShareFileId = fileId;
+    const file = allFiles.find(f => f.id === fileId);
+    if (!file) return;
+    document.getElementById('share-modal-filename').textContent = file.name;
+    document.getElementById('share-email-input').value = '';
+    renderModalPerms(file);
+    document.getElementById('share-overlay').style.display = 'flex';
+  }
+
+  function closeShareModal() {
+    document.getElementById('share-overlay').style.display = 'none';
+    activeShareFileId = null;
+  }
+
+  function renderModalPerms(file) {
+    const perms = (file.permissionDetails || []);
+    const list = document.getElementById('share-perms-list');
+    if (perms.length === 0) {
+      list.innerHTML = '<div style="padding:16px 0;color:var(--muted);font-size:13px;text-align:center">No permissions found</div>';
+      return;
+    }
+    list.innerHTML = perms.map(p => {
+      const name    = escHtml(p.displayName || p.emailAddress || 'Unknown');
+      const email   = p.emailAddress ? escHtml(p.emailAddress) : '';
+      const initial = (p.displayName || p.emailAddress || '?')[0].toUpperCase();
+      const isOwner = p.role === 'owner';
+      const roleHtml = isOwner
+        ? `<span class="share-perm-role-label">Owner</span>`
+        : `<select class="share-perm-role-select" onchange="handleRoleChange('${p.id}',this.value)">
+            <option value="reader"    ${p.role==='reader'    ?'selected':''}>Viewer</option>
+            <option value="commenter" ${p.role==='commenter' ?'selected':''}>Commenter</option>
+            <option value="writer"    ${p.role==='writer'    ?'selected':''}>Editor</option>
+           </select>`;
+      const removeBtn = isOwner ? ''
+        : `<button class="share-perm-remove" onclick="handleRemovePerson('${p.id}')" title="Remove">✕</button>`;
+      return `<div class="share-perm-row" id="perm-row-${p.id}">
+        <div class="share-perm-avatar">${initial}</div>
+        <div class="share-perm-info">
+          <div class="share-perm-name">${name}</div>
+          ${email ? `<div class="share-perm-email">${email}</div>` : ''}
+        </div>
+        ${roleHtml}${removeBtn}
+      </div>`;
+    }).join('');
+  }
+
+  async function handleAddPerson() {
+    const email = document.getElementById('share-email-input').value.trim();
+    const role  = document.getElementById('share-role-select').value;
+    if (!email || !activeShareFileId) return;
+    const btn = document.querySelector('.share-add-btn');
+    btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${activeShareFileId}/permissions?sendNotificationEmail=true`,
+        { method:'POST', headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+          body: JSON.stringify({ type:'user', role, emailAddress:email }) }
+      );
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Failed'); }
+      const file = allFiles.find(f => f.id === activeShareFileId);
+      if (file) {
+        file.permissionDetails = await fetchPermissions(activeShareFileId);
+        renderModalPerms(file);
+        updateStats(); applyFilter();
+      }
+      document.getElementById('share-email-input').value = '';
+    } catch(e) { alert('Could not add: ' + e.message); }
+    finally { btn.disabled = false; btn.textContent = 'Add'; }
+  }
+
+  async function handleRemovePerson(permId) {
+    if (!activeShareFileId) return;
+    const row = document.getElementById('perm-row-' + permId);
+    if (row) row.style.opacity = '.4';
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${activeShareFileId}/permissions/${permId}`,
+        { method:'DELETE', headers:{ Authorization:`Bearer ${accessToken}` } }
+      );
+      if (!res.ok && res.status !== 204) throw new Error('Failed to remove');
+      const file = allFiles.find(f => f.id === activeShareFileId);
+      if (file) {
+        file.permissionDetails = (file.permissionDetails || []).filter(p => p.id !== permId);
+        renderModalPerms(file);
+        updateStats(); applyFilter();
+      }
+    } catch(e) { if (row) row.style.opacity = '1'; alert('Could not remove: ' + e.message); }
+  }
+
+  async function handleRoleChange(permId, newRole) {
+    if (!activeShareFileId) return;
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${activeShareFileId}/permissions/${permId}`,
+        { method:'PATCH', headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+          body: JSON.stringify({ role: newRole }) }
+      );
+      if (!res.ok) throw new Error('Failed to update role');
+      const file = allFiles.find(f => f.id === activeShareFileId);
+      if (file) {
+        const perm = (file.permissionDetails || []).find(p => p.id === permId);
+        if (perm) perm.role = newRole;
+        updateStats(); applyFilter();
+      }
+    } catch(e) {
+      alert('Could not update role: ' + e.message);
+      const file = allFiles.find(f => f.id === activeShareFileId);
+      if (file) renderModalPerms(file);
+    }
+  }
 
 
 </script>
