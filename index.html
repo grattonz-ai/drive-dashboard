@@ -455,6 +455,18 @@
     font-weight:500; cursor:pointer; transition:all .15s;
   }
   .share-done-btn:hover { background:#2d5ce8; }
+  .email-suggestions {
+    position:absolute; top:100%; left:0; right:0; z-index:500;
+    background:white; border:1px solid var(--border); border-top:none;
+    border-radius:0 0 var(--radius-sm) var(--radius-sm);
+    box-shadow:var(--shadow); max-height:200px; overflow-y:auto;
+  }
+  .email-suggestion-item {
+    padding:8px 12px; cursor:pointer; transition:background .1s;
+  }
+  .email-suggestion-item:hover { background:var(--bg); }
+  .email-suggestion-name { font-size:13px; font-weight:500; color:var(--text); }
+  .email-suggestion-addr { font-size:11.5px; color:var(--muted); }
 
   @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -681,7 +693,13 @@
     <div class="share-modal-body">
       <div class="share-section-label">Add people</div>
       <div class="share-add-row">
-        <input type="email" class="share-email-input" id="share-email-input" placeholder="Email address…">
+        <div style="position:relative;flex:1;min-width:0">
+          <input type="email" class="share-email-input" id="share-email-input" placeholder="Email address…"
+            oninput="onEmailInput()" autocomplete="off"
+            onblur="setTimeout(()=>{document.getElementById('email-suggestions').style.display='none'},150)"
+            style="width:100%;flex:none">
+          <div class="email-suggestions" id="email-suggestions" style="display:none"></div>
+        </div>
         <select class="share-role-select" id="share-role-select">
           <option value="reader">Viewer</option>
           <option value="commenter">Commenter</option>
@@ -1204,6 +1222,42 @@
 
   // ── Share modal ──
   let activeShareFileId = null;
+  let knownPeople = [];
+
+  function populateKnownPeople() {
+    const seen = new Set();
+    knownPeople = [];
+    allFiles.forEach(file => {
+      (file.permissionDetails || []).forEach(p => {
+        if (p.emailAddress && !seen.has(p.emailAddress) && p.type === 'user') {
+          seen.add(p.emailAddress);
+          knownPeople.push({ email: p.emailAddress, name: p.displayName || '' });
+        }
+      });
+    });
+    knownPeople.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+  }
+
+  function onEmailInput() {
+    const q = document.getElementById('share-email-input').value.toLowerCase().trim();
+    const dropdown = document.getElementById('email-suggestions');
+    if (!q) { dropdown.style.display = 'none'; return; }
+    const matches = knownPeople.filter(p =>
+      p.email.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+    ).slice(0, 8);
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = matches.map(p => `
+      <div class="email-suggestion-item" onmousedown="selectSuggestion('${escHtml(p.email)}')">
+        ${p.name ? `<div class="email-suggestion-name">${escHtml(p.name)}</div>` : ''}
+        <div class="email-suggestion-addr">${escHtml(p.email)}</div>
+      </div>`).join('');
+    dropdown.style.display = 'block';
+  }
+
+  function selectSuggestion(email) {
+    document.getElementById('share-email-input').value = email;
+    document.getElementById('email-suggestions').style.display = 'none';
+  }
 
   function openShareModal(fileId) {
     activeShareFileId = fileId;
@@ -1211,6 +1265,8 @@
     if (!file) return;
     document.getElementById('share-modal-filename').textContent = file.name;
     document.getElementById('share-email-input').value = '';
+    document.getElementById('email-suggestions').style.display = 'none';
+    populateKnownPeople();
     renderModalPerms(file);
     document.getElementById('share-overlay').style.display = 'flex';
   }
