@@ -267,7 +267,7 @@
   .table-wrap {
     background: white; border-radius: var(--radius);
     border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-    overflow: hidden; animation: fadeUp .4s .25s ease both;
+    overflow: visible; animation: fadeUp .4s .25s ease both;
   }
 
   .table-header {
@@ -1450,17 +1450,19 @@
     document.getElementById('bulk-modal-title').textContent = `Share ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''} with…`;
     document.getElementById('bulk-modal-body').innerHTML = `
       <div style="display:flex;gap:8px;align-items:flex-start">
-        <input type="email" id="bulk-email" placeholder="Email address…"
-          style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"
-          oninput="onBulkEmailInput()" autocomplete="off"
-          onblur="setTimeout(()=>{var s=document.getElementById('bulk-email-sug');if(s)s.style.display='none'},150)">
-        <select id="bulk-role" style="padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit">
+        <div style="position:relative;flex:1;min-width:0">
+          <input type="email" id="bulk-email" placeholder="Email address…"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"
+            oninput="onBulkEmailInput()" autocomplete="off"
+            onblur="setTimeout(()=>{var s=document.getElementById('bulk-email-sug');if(s)s.style.display='none'},150)">
+          <div id="bulk-email-sug" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);z-index:10002;max-height:200px;overflow-y:auto"></div>
+        </div>
+        <select id="bulk-role" style="padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;flex-shrink:0">
           <option value="reader">Viewer</option>
           <option value="commenter">Commenter</option>
           <option value="writer" selected>Editor</option>
         </select>
-      </div>
-      <div id="bulk-email-sug" style="display:none;position:absolute;background:white;border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);z-index:10002;max-height:180px;overflow-y:auto;width:260px"></div>`;
+      </div>`;
     document.getElementById('bulk-progress-text').textContent = '';
     document.getElementById('bulk-progress-fill').style.width = '0';
     document.getElementById('bulk-confirm-btn').textContent = `Share ${selectedFiles.size} files`;
@@ -1473,11 +1475,13 @@
     document.getElementById('bulk-modal-title').textContent = `Remove access from ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''}`;
     document.getElementById('bulk-modal-body').innerHTML = `
       <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Enter the email of the person whose access you want to remove from all selected files.</p>
-      <input type="email" id="bulk-email" placeholder="Email address…"
-        style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;box-sizing:border-box"
-        oninput="onBulkEmailInput()" autocomplete="off"
-        onblur="setTimeout(()=>{var s=document.getElementById('bulk-email-sug');if(s)s.style.display='none'},150)">
-      <div id="bulk-email-sug" style="display:none;position:absolute;background:white;border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);z-index:10002;max-height:180px;overflow-y:auto;width:300px"></div>`;
+      <div style="position:relative">
+        <input type="email" id="bulk-email" placeholder="Email address…"
+          style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"
+          oninput="onBulkEmailInput()" autocomplete="off"
+          onblur="setTimeout(()=>{var s=document.getElementById('bulk-email-sug');if(s)s.style.display='none'},150)">
+        <div id="bulk-email-sug" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow);z-index:10002;max-height:200px;overflow-y:auto"></div>
+      </div>`;
     document.getElementById('bulk-progress-text').textContent = '';
     document.getElementById('bulk-progress-fill').style.width = '0';
     document.getElementById('bulk-confirm-btn').textContent = `Remove from ${selectedFiles.size} files`;
@@ -1488,7 +1492,9 @@
 
   function closeBulkModal() {
     document.getElementById('bulk-overlay').style.display = 'none';
-    document.getElementById('bulk-confirm-btn').style.background = 'var(--blue)';
+    const btn = document.getElementById('bulk-confirm-btn');
+    btn.style.background = 'var(--blue)';
+    btn.textContent = 'Apply';
     bulkAction = null;
   }
 
@@ -1538,8 +1544,11 @@
       fill.style.width = pct + '%';
       txt.textContent = `${done + failed} / ${ids.length} processed…`;
     }
-    txt.textContent = `Done — ${done} shared${failed ? `, ${failed} failed` : ''}.`;
+    txt.textContent = `${done} shared${failed ? `, ${failed} failed` : ''}.`;
     btn.disabled = false;
+    btn.textContent = '✓ Done';
+    btn.style.background = '#0F9D58';
+    btn.onclick = closeBulkModal;
     updateStats(); applyFilter();
   }
 
@@ -1572,8 +1581,11 @@
       fill.style.width = pct + '%';
       txt.textContent = `${done + failed + notFound} / ${ids.length} processed…`;
     }
-    txt.textContent = `Done — removed from ${done} file${done !== 1 ? 's' : ''}${notFound ? `, not found on ${notFound}` : ''}${failed ? `, ${failed} failed` : ''}.`;
+    txt.textContent = `Removed from ${done} file${done !== 1 ? 's' : ''}${notFound ? `, not found on ${notFound}` : ''}${failed ? `, ${failed} failed` : ''}.`;
     btn.disabled = false;
+    btn.textContent = '✓ Done';
+    btn.style.background = '#0F9D58';
+    btn.onclick = closeBulkModal;
     updateStats(); applyFilter();
   }
 
