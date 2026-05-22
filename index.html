@@ -996,17 +996,20 @@
       const info = folderInfoCache[cur];
       if (!info) break;
       segments.unshift({ id: cur, name: info.name });
-      // Stop at any node named "My Drive" or with no parent — both mean root
-      if (!info.parentId || info.name === 'My Drive') { reachedRoot = true; break; }
+      if (!info.parentId) { reachedRoot = true; break; }
       cur = info.parentId;
     }
 
     if (segments.length === 0) {
-      // nothing resolved — link to folder with generic label
       return [{ id: folderId, name: 'My Drive' }];
     }
 
-    // Only prepend a synthetic "My Drive" if we never reached the actual root
+    // The Drive API sometimes returns two consecutive "My Drive" nodes
+    // (user root + system root). Keep only the first one.
+    while (segments.length > 1 && segments[0].name === 'My Drive' && segments[1].name === 'My Drive') {
+      segments.shift();
+    }
+
     if (!reachedRoot) {
       segments.unshift({ id: null, name: 'My Drive' });
     }
