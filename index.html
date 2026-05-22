@@ -731,7 +731,7 @@
 </div>
 
 <!-- Scroll buttons -->
-<div style="position:fixed;right:24px;bottom:80px;display:flex;flex-direction:column;gap:8px;z-index:500;">
+<div id="scroll-btns" style="position:fixed;right:24px;bottom:80px;display:none;flex-direction:column;gap:8px;z-index:500;">
   <button onclick="window.scrollTo({top:0,behavior:'smooth'})"
     style="width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:white;box-shadow:var(--shadow);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;" title="Scroll to top">↑</button>
   <button onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
@@ -827,6 +827,7 @@
         await loadUserInfo();
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('scroll-btns').style.display = 'flex';
         loadFiles();
       }
     });
@@ -838,6 +839,7 @@
       loadUserInfo().then(() => {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('scroll-btns').style.display = 'flex';
         loadFiles();
       }).catch(() => {
         sessionStorage.removeItem('dd_token');
@@ -856,6 +858,7 @@
       accessToken = null; allFiles = [];
       sessionStorage.removeItem('dd_token');
       document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('scroll-btns').style.display = 'none';
       document.getElementById('login-screen').style.display = 'flex';
     });
   }
