@@ -968,13 +968,16 @@
       let token = changesPageToken;
       const changed = [], removed = [];
 
-      // Walk all pages of changes since saved token
       while (token) {
         const res = await fetch(
-          `https://www.googleapis.com/drive/v3/changes?pageToken=${token}&fields=nextPageToken,newStartPageToken,changes(removed,fileId,file(id,name,mimeType,createdTime,modifiedTime,webViewLink,shared,ownedByMe,owners,parents,size,quotaBytesUsed,trashed))&includeItemsFromAllDrives=false`,
+          `https://www.googleapis.com/drive/v3/changes?pageToken=${token}&fields=nextPageToken,newStartPageToken,changes(removed,fileId,file(id,name,mimeType,createdTime,modifiedTime,webViewLink,shared,ownedByMe,owners,parents,size,quotaBytesUsed,trashed))`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
-        if (!res.ok) return;
+        if (!res.ok) {
+          // Token expired or other error — fall back to full reload
+          if (res.status === 401) loadFiles();
+          return;
+        }
         const data = await res.json();
         for (const c of (data.changes || [])) {
           if (c.removed || c.file?.trashed) {
@@ -983,12 +986,13 @@
             changed.push(c.file);
           }
         }
-        if (data.newStartPageToken) {
-          changesPageToken = data.newStartPageToken;
-          break;
-        }
-        token = data.nextPageToken;
+        // Save the new token regardless — keeps our bookmark current
+        if (data.newStartPageToken) changesPageToken = data.newStartPageToken;
+        token = data.nextPageToken || null;
       }
+
+      // Always bump lastLoadTime so we don't re-fire every tab switch
+      lastLoadTime = Date.now();
 
       if (removed.length === 0 && changed.length === 0) return;
 
@@ -1002,7 +1006,6 @@
       for (const file of changed) {
         const idx = allFiles.findIndex(f => f.id === file.id);
         if (idx !== -1) {
-          // Preserve fetched permissions, update everything else
           file.permissionDetails = allFiles[idx].permissionDetails;
           allFiles[idx] = file;
         } else {
@@ -1010,7 +1013,6 @@
         }
       }
 
-      // Resolve any new folder parents, then fetch permissions for new/changed files
       await resolveFolderNames();
       const needPerms = changed.filter(f => !f.permissionDetails);
       if (needPerms.length > 0) {
@@ -1019,15 +1021,16 @@
         }));
       }
 
-      lastLoadTime = Date.now();
       updateStats();
       applyFilter();
 
-      // Brief toast to let the user know it synced quietly
+      const n = changed.length + removed.length;
       const btn = document.getElementById('refresh-btn');
-      btn.innerHTML = `✓ Synced ${changed.length + removed.length} change${(changed.length + removed.length) !== 1 ? 's' : ''}`;
+      btn.innerHTML = `✓ Synced ${n} change${n !== 1 ? 's' : ''}`;
       setTimeout(() => { btn.innerHTML = '⟳ Refresh'; }, 2500);
-    } catch {}
+    } catch (e) {
+      console.warn('Drive sync failed:', e);
+    }
   }
 
   async function fetchPermissions(fileId) {
