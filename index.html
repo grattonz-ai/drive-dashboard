@@ -595,11 +595,6 @@
 
 
     <div id="error-banner" class="error-banner"></div>
-    <div id="stale-banner" style="display:none;align-items:center;gap:10px;background:#fff7ed;border:1px solid #f97316;border-radius:var(--radius-sm);padding:10px 16px;margin-bottom:12px;font-size:13px;color:#92400e;">
-      <span>⚠️ Drive data may be outdated. Changes in Google Drive won't appear until you refresh.</span>
-      <button onclick="loadFiles()" style="margin-left:auto;padding:5px 14px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;">Refresh now</button>
-      <button onclick="document.getElementById('stale-banner').style.display='none'" style="padding:5px 10px;background:transparent;border:1px solid #f97316;border-radius:6px;cursor:pointer;font-size:13px;color:#92400e;">✕</button>
-    </div>
 
     <div class="toolbar">
       <div class="search-box">
@@ -813,6 +808,7 @@
   let accessToken = null;
   let currentUserEmail = null;
   let lastLoadTime = 0;
+  let changesPageToken = null;
   let allFiles = [];
   let selectedFiles = new Set();
   let filteredFiles = [];
@@ -942,16 +938,97 @@
       btn.disabled = false;
       btn.innerHTML = `✓ ${allFiles.length} files loaded`;
       setTimeout(() => { btn.innerHTML = '⟳ Refresh'; }, 2500);
+      // Save a changes token so future tab-focus checks are incremental
+      fetchChangesStartToken();
     }
   }
 
-  // Auto-refresh banner when returning to tab after 2+ minutes
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && accessToken && lastLoadTime > 0) {
-      const stale = Date.now() - lastLoadTime > 2 * 60 * 1000;
-      document.getElementById('stale-banner').style.display = stale ? 'flex' : 'none';
-    }
+  async function fetchChangesStartToken() {
+    try {
+      const res = await fetch('https://www.googleapis.com/drive/v3/changes/startPageToken', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        changesPageToken = data.startPageToken;
+      }
+    } catch {}
+  }
+
+  // When returning to the tab, do a fast incremental sync via the Changes API
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden || !accessToken || lastLoadTime === 0) return;
+    const away = Date.now() - lastLoadTime > 30 * 1000; // 30s threshold
+    if (!away || !changesPageToken) return;
+    await syncChanges();
   });
+
+  async function syncChanges() {
+    try {
+      let token = changesPageToken;
+      const changed = [], removed = [];
+
+      // Walk all pages of changes since saved token
+      while (token) {
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/changes?pageToken=${token}&fields=nextPageToken,newStartPageToken,changes(removed,fileId,file(id,name,mimeType,createdTime,modifiedTime,webViewLink,shared,ownedByMe,owners,parents,size,quotaBytesUsed,trashed))&includeItemsFromAllDrives=false`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const c of (data.changes || [])) {
+          if (c.removed || c.file?.trashed) {
+            removed.push(c.fileId);
+          } else if (c.file) {
+            changed.push(c.file);
+          }
+        }
+        if (data.newStartPageToken) {
+          changesPageToken = data.newStartPageToken;
+          break;
+        }
+        token = data.nextPageToken;
+      }
+
+      if (removed.length === 0 && changed.length === 0) return;
+
+      // Apply removals
+      if (removed.length > 0) {
+        const removedSet = new Set(removed);
+        allFiles = allFiles.filter(f => !removedSet.has(f.id));
+      }
+
+      // Apply updates / additions
+      for (const file of changed) {
+        const idx = allFiles.findIndex(f => f.id === file.id);
+        if (idx !== -1) {
+          // Preserve fetched permissions, update everything else
+          file.permissionDetails = allFiles[idx].permissionDetails;
+          allFiles[idx] = file;
+        } else {
+          allFiles.push(file);
+        }
+      }
+
+      // Resolve any new folder parents, then fetch permissions for new/changed files
+      await resolveFolderNames();
+      const needPerms = changed.filter(f => !f.permissionDetails);
+      if (needPerms.length > 0) {
+        await Promise.all(needPerms.map(async f => {
+          f.permissionDetails = await fetchPermissions(f.id);
+        }));
+      }
+
+      lastLoadTime = Date.now();
+      updateStats();
+      applyFilter();
+
+      // Brief toast to let the user know it synced quietly
+      const btn = document.getElementById('refresh-btn');
+      btn.innerHTML = `✓ Synced ${changed.length + removed.length} change${(changed.length + removed.length) !== 1 ? 's' : ''}`;
+      setTimeout(() => { btn.innerHTML = '⟳ Refresh'; }, 2500);
+    } catch {}
+  }
 
   async function fetchPermissions(fileId) {
     try {
