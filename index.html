@@ -324,10 +324,10 @@
   .access-dot {
     width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
   }
-  .access-dot.owner  { background: var(--purple); }
-  .access-dot.editor { background: var(--blue); }
-  .access-dot.viewer { background: var(--green); }
-  .access-dot.commenter { background: var(--orange); }
+  .access-dot.owner,    .access-dot.writer  { background: var(--purple); }
+  .access-dot.editor                        { background: var(--blue); }
+  .access-dot.viewer,   .access-dot.reader  { background: var(--green); }
+  .access-dot.commenter                     { background: var(--orange); }
 
   .role-tag {
     font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
@@ -563,7 +563,7 @@
 
   <div class="main">
     <div class="stats-row">
-      <div class="stat-card">
+      <div class="stat-card clickable active" id="stat-card-total" onclick="filterByStatCard('all')" title="Click to show all files">
         <div class="stat-icon blue">📄</div>
         <div>
           <div class="stat-val" id="stat-total">—</div>
@@ -584,7 +584,7 @@
           <div class="stat-lbl">Publicly Shared</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" id="stat-card-shared" onclick="filterByStatCard('shared')" title="Click to filter files shared with specific people">
         <div class="stat-icon purple">👥</div>
         <div>
           <div class="stat-val" id="stat-shared">—</div>
@@ -595,6 +595,11 @@
 
 
     <div id="error-banner" class="error-banner"></div>
+    <div id="stale-banner" style="display:none;align-items:center;gap:10px;background:#fff7ed;border:1px solid #f97316;border-radius:var(--radius-sm);padding:10px 16px;margin-bottom:12px;font-size:13px;color:#92400e;">
+      <span>⚠️ Drive data may be outdated. Changes in Google Drive won't appear until you refresh.</span>
+      <button onclick="loadFiles()" style="margin-left:auto;padding:5px 14px;background:var(--orange);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;">Refresh now</button>
+      <button onclick="document.getElementById('stale-banner').style.display='none'" style="padding:5px 10px;background:transparent;border:1px solid #f97316;border-radius:6px;cursor:pointer;font-size:13px;color:#92400e;">✕</button>
+    </div>
 
     <div class="toolbar">
       <div class="search-box">
@@ -639,7 +644,7 @@
       <table id="files-table" style="min-width:900px;width:100%;table-layout:fixed">
         <thead>
           <tr>
-            <th style="width:3%;text-align:center"><input type="checkbox" class="row-cb" id="select-all-cb" onchange="toggleSelectAll(this.checked)" title="Select all on this page"></th>
+            <th style="width:3%;text-align:center"><input type="checkbox" class="row-cb" id="select-all-cb" onchange="toggleSelectAll(this.checked)" title="Select all files"></th>
             <th style="width:14%">File Name</th>
             <th style="width:7%;position:relative">
               <div class="col-header" onclick="toggleDropdown('type',event)">Type <button class="col-arrow" id="arr-type">▾</button></div>
@@ -807,6 +812,7 @@
   let tokenClient;
   let accessToken = null;
   let currentUserEmail = null;
+  let lastLoadTime = 0;
   let allFiles = [];
   let selectedFiles = new Set();
   let filteredFiles = [];
@@ -913,7 +919,7 @@
       } while (pageToken);
 
       // ── Phase 2: fetch permissions in background, larger batches of 20 ──
-      const PERM_BATCH = 20;
+      const PERM_BATCH = 50;
       for (let i = 0; i < allFiles.length; i += PERM_BATCH) {
         const batch = allFiles.slice(i, i + PERM_BATCH);
         await Promise.all(batch.map(async file => {
@@ -932,11 +938,20 @@
       showError("Failed to load files: " + e.message);
       showEmpty();
     } finally {
+      lastLoadTime = Date.now();
       btn.disabled = false;
       btn.innerHTML = `✓ ${allFiles.length} files loaded`;
       setTimeout(() => { btn.innerHTML = '⟳ Refresh'; }, 2500);
     }
   }
+
+  // Auto-refresh banner when returning to tab after 2+ minutes
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && accessToken && lastLoadTime > 0) {
+      const stale = Date.now() - lastLoadTime > 2 * 60 * 1000;
+      document.getElementById('stale-banner').style.display = stale ? 'flex' : 'none';
+    }
+  });
 
   async function fetchPermissions(fileId) {
     try {
@@ -1077,16 +1092,16 @@
   }
 
   function filterByStatCard(visibility) {
-    const newVal = colFilters.visibility === visibility ? 'all' : visibility;
+    const newVal = (visibility !== 'all' && colFilters.visibility === visibility) ? 'all' : visibility;
     colFilters.visibility = newVal;
     document.querySelectorAll('#dd-visibility .col-dd-item').forEach(item => {
       item.classList.toggle('selected', item.dataset.val === newVal);
     });
     const arrow = document.getElementById('arr-visibility');
     if (arrow) arrow.classList.toggle('active', newVal !== 'all');
-    ['private', 'public'].forEach(v => {
+    ['total', 'private', 'public', 'shared'].forEach(v => {
       const card = document.getElementById('stat-card-' + v);
-      if (card) card.classList.toggle('active', newVal === v);
+      if (card) card.classList.toggle('active', v === 'total' ? newVal === 'all' : newVal === v);
     });
     currentPage = 1;
     applyFilter();
@@ -1104,9 +1119,9 @@
       document.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === val));
     }
     if (col === 'visibility') {
-      ['private', 'public'].forEach(v => {
+      ['total', 'private', 'public', 'shared'].forEach(v => {
         const card = document.getElementById('stat-card-' + v);
-        if (card) card.classList.toggle('active', val === v);
+        if (card) card.classList.toggle('active', v === 'total' ? val === 'all' : val === v);
       });
     }
     document.getElementById('dd-' + col).classList.remove('open');
@@ -1229,12 +1244,12 @@
                 <div style="font-weight:500;color:var(--text);font-size:12px">${escHtml(p.displayName || p.emailAddress || 'Unknown')}</div>
                 ${p.emailAddress ? `<div style="font-size:11px;color:var(--muted)">${escHtml(p.emailAddress)}</div>` : ''}
               </div>
-              <span class="role-tag ${p.role}">${p.role}</span>
+              <span class="role-tag ${roleClass(p.role)}">${roleLabel(p.role)}</span>
             </div>`).join('')}
-            ${anyonePerm ? `<div class="access-item"><div class="access-dot" style="background:var(--orange)"></div><div style="font-size:12px;flex:1">Anyone with link</div><span class="role-tag commenter">${anyonePerm.role}</span></div>` : ''}
+            ${anyonePerm ? `<div class="access-item"><div class="access-dot" style="background:var(--orange)"></div><div style="font-size:12px;flex:1">Anyone with link</div><span class="role-tag ${roleClass(anyonePerm.role)}">${roleLabel(anyonePerm.role)}</span></div>` : ''}
           </div>`
         : anyonePerm
-        ? `<div class="access-item"><div class="access-dot" style="background:var(--orange)"></div><div style="font-size:12px;flex:1">Anyone with link</div><span class="role-tag commenter">${anyonePerm.role}</span></div>`
+        ? `<div class="access-item"><div class="access-dot" style="background:var(--orange)"></div><div style="font-size:12px;flex:1">Anyone with link</div><span class="role-tag ${roleClass(anyonePerm.role)}">${roleLabel(anyonePerm.role)}</span></div>`
         : file.ownedByMe === false
         ? `<span style="color:var(--muted);font-size:12px">—</span>`
         : `<span style="color:var(--muted);font-size:12px">Only you</span>`;
@@ -1400,6 +1415,11 @@
     return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
   }
 
+  const ROLE_LABELS = { writer:'Editor', reader:'Viewer', commenter:'Commenter', owner:'Owner', organizer:'Organizer', fileOrganizer:'Editor' };
+  const ROLE_CLASS  = { writer:'editor', reader:'viewer', commenter:'commenter', owner:'owner', organizer:'editor', fileOrganizer:'editor' };
+  function roleLabel(r) { return ROLE_LABELS[r] || r; }
+  function roleClass(r) { return ROLE_CLASS[r]  || r; }
+
   function escHtml(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -1467,8 +1487,8 @@
   }
 
   function toggleSelectAll(checked) {
-    const page = filteredFiles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-    page.forEach(f => {
+    // Select / deselect ALL filtered files across every page
+    filteredFiles.forEach(f => {
       if (checked) selectedFiles.add(f.id);
       else selectedFiles.delete(f.id);
     });
@@ -1480,11 +1500,10 @@
   }
 
   function updateSelectAll() {
-    const page = filteredFiles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
     const cb = document.getElementById('select-all-cb');
-    if (!cb || page.length === 0) return;
-    const allSel  = page.every(f => selectedFiles.has(f.id));
-    const someSel = page.some(f  => selectedFiles.has(f.id));
+    if (!cb || filteredFiles.length === 0) return;
+    const allSel  = filteredFiles.every(f => selectedFiles.has(f.id));
+    const someSel = filteredFiles.some(f  => selectedFiles.has(f.id));
     cb.checked = allSel;
     cb.indeterminate = someSel && !allSel;
   }
@@ -1493,7 +1512,11 @@
     const n = selectedFiles.size;
     const bar = document.getElementById('bulk-bar');
     bar.classList.toggle('visible', n > 0);
-    document.getElementById('bulk-count').textContent = `${n} file${n !== 1 ? 's' : ''} selected`;
+    const totalPages = Math.ceil(filteredFiles.length / PAGE_SIZE);
+    const label = totalPages > 1
+      ? `${n} file${n !== 1 ? 's' : ''} selected across ${totalPages} page${totalPages !== 1 ? 's' : ''}`
+      : `${n} file${n !== 1 ? 's' : ''} selected`;
+    document.getElementById('bulk-count').textContent = label;
   }
 
   function clearSelection() {
