@@ -1006,7 +1006,6 @@
       for (const file of changed) {
         const idx = allFiles.findIndex(f => f.id === file.id);
         if (idx !== -1) {
-          file.permissionDetails = allFiles[idx].permissionDetails;
           allFiles[idx] = file;
         } else {
           allFiles.push(file);
@@ -1014,9 +1013,9 @@
       }
 
       await resolveFolderNames();
-      const needPerms = changed.filter(f => !f.permissionDetails);
-      if (needPerms.length > 0) {
-        await Promise.all(needPerms.map(async f => {
+      // Always re-fetch permissions for every changed file — the change may have been a permission update
+      if (changed.length > 0) {
+        await Promise.all(changed.map(async f => {
           f.permissionDetails = await fetchPermissions(f.id);
         }));
       }
