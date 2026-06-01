@@ -2,6 +2,8 @@
 
 A web app to visualize and manage sharing permissions across your entire Google Drive — see every file, who has access, and manage it all in one place.
 
+**[Live app →](https://grattonz-ai.github.io/drive-dashboard/)**
+
 ---
 
 ## Features
